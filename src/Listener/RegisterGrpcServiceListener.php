@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+/**
+ * @author   crayoon
+ * @contact  so.wo@foxmail.com
+ */
+
 namespace Crayoon\HyperfGrpc\Listener;
 
 use Hyperf\Consul\Exception\ServerException;
