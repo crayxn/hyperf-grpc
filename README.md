@@ -13,7 +13,7 @@ composer require crayoon/hyperf-grpc
 生成配置文件
 
 ```
-php bin/hyperf vendor:publish crayoon/hyperf-grpc
+php bin/hyperf.php vendor:publish crayoon/hyperf-grpc
 ```
 
 使用
