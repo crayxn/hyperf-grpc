@@ -1,0 +1,58 @@
+{
+    "name": "crayoon/hyperf-grpc",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "php",
+        "hyperf",
+        "grpc"
+    ],
+    "description": "hyperf grpc extend",
+    "autoload": {
+        "psr-4": {
+            "Crayoon\\HyperfGrpc\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HyperfTest\\HyperfGrpc\\": "tests"
+        }
+    },
+    "require": {
+        "php": ">=8.0",
+        "hyperf/di": "3.0.*",
+        "hyperf/grpc-server": "^3.0",
+        "hyperf/http-server": "^3.0",
+        "hyperf/service-governance": "^3.0",
+        "hyperf/service-governance-consul": "^3.0",
+        "hyperf/service-governance-nacos": "^3.0",
+        "hyperf/tracer": "^3.0",
+        "hyperf/utils": "^3.0",
+        "jonahgeorge/jaeger-client-php": "^1.4"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "mockery/mockery": "^1.0",
+        "phpstan/phpstan": "^1.0",
+        "phpunit/phpunit": ">=7.0",
+        "swoole/ide-helper": "^4.5"
+    },
+    "suggest": {
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit -c phpunit.xml --colors=always",
+        "analyse": "phpstan analyse --memory-limit 1024M -l 0 ./src",
+        "cs-fix": "php-cs-fixer fix $1"
+    },
+    "extra": {
+        "hyperf": {
+            "config": "Crayoon\\HyperfGrpc\\ConfigProvider"
+        }
+    }
+}
