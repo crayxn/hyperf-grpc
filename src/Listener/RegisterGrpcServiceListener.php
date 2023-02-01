@@ -16,6 +16,7 @@ use Hyperf\Event\Contract\ListenerInterface;
 use Hyperf\Framework\Event\MainWorkerStart;
 use Hyperf\HttpServer\Router\DispatcherFactory;
 use Hyperf\HttpServer\Router\Handler;
+use Hyperf\Nacos\Exception\RequestException;
 use Hyperf\ServiceGovernance\DriverManager;
 use Hyperf\ServiceGovernance\ServiceManager;
 use Psr\Container\ContainerExceptionInterface;
@@ -89,9 +90,18 @@ class RegisterGrpcServiceListener implements ListenerInterface {
                 foreach ($services as $name) {
                     [$host, $port] = $this->getServers()[$protocol];
                     if ($governance = $this->governanceManager->get($driverName)) {
-                        if (!$governance->isRegistered($name, $host, (int)$port, ['protocol' => $protocol])) {
-                            $governance->register($name, $host, $port, ['protocol' => $protocol]);
+                        try {
+                            if ($governance->isRegistered($name, $host, (int)$port, ['protocol' => $protocol])) {
+                                continue;
+                            }
+                        } catch (RequestException $requestException) {
+                            // 兼容nacos不同版本调用 错误抛400问题
+                            if ($requestException->getCode() != 400) {
+                                $this->logger->error($requestException->getMessage());
+                                continue;
+                            }
                         }
+                        $governance->register($name, $host, $port, ['protocol' => $protocol]);
                     }
                 }
                 $continue = false;
