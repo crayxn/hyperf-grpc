@@ -9,6 +9,8 @@ declare(strict_types=1);
 namespace Crayoon\HyperfGrpc\Reflection;
 
 use Hyperf\Contract\ConfigInterface;
+use Hyperf\Grpc\StatusCode;
+use Hyperf\GrpcServer\Exception\GrpcException;
 use Hyperf\HttpServer\Router\DispatcherFactory;
 use Hyperf\HttpServer\Router\Handler;
 use Hyperf\Utils\Str;
@@ -64,8 +66,26 @@ class Reflection implements ServerReflectionInterface {
                     (new FileDescriptorResponse())->setFileDescriptorProto($files)
                 );
                 break;
+            case "file_by_filename":
+                $fileName = $request->getFileByFilename();
+                if (str_contains($fileName, 'google/protobuf/')) {
+                    $paths = $this->toGoogleProtobufPath($fileName);
+                    $resp->setFileDescriptorResponse(
+                        (new FileDescriptorResponse())->setFileDescriptorProto([$this->getProtoFileContent($paths)])
+                    );
+                    break;
+                }
+                throw new GrpcException("{$fileName} not found", StatusCode::NOT_FOUND);
         }
         return $resp;
+    }
+
+    private function toGoogleProtobufPath($fileName): string {
+        $start = strpos($fileName, 'google/protobuf/') + 16;
+        $end   = strpos($fileName, '.');
+        $class = substr($fileName, $start, $end - $start);
+        if ($class == "empty") $class = "GPBEmpty";
+        return $this->getProtoFilePathsByClass(["GPBMetadata\\Google\\Protobuf\\" . Str::studly($class)])[0] ?? '';
     }
 
     private function servers(): array {
@@ -113,11 +133,14 @@ class Reflection implements ServerReflectionInterface {
             // 读取
             $file = file_get_contents($filePath);
             // 获取proto生成的内容 todo 带点玄学，需要优化
-            $start                  = strpos($file, "'", 121) + 1;
-            $end                    = strpos($file, "'", $start);
-            $file                   = substr($file, $start, $end - $start);
-            $file                   = str_replace('\\\\', "\\", $file);
-            $file                   = str_replace(substr($file, 1, 3), "", $file);
+            $start = strpos($file, "'", 121) + 1;
+            // 暂时只支持proto3
+            $end  = strpos($file, "proto3'", $start) + 6;
+            $file = substr($file, $start, $end - $start);
+            $file = str_replace('\\\\', "\\", $file);
+            $file = str_replace(substr($file, 1, 3), "", $file);
+            $file = str_replace("\'", "'", $file);
+            //存
             $this->files[$filePath] = $file;
         }
         return $this->files[$filePath];
