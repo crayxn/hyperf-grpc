@@ -16,7 +16,8 @@ use Hyperf\HttpServer\Router\Handler;
 use Hyperf\Utils\Str;
 use Psr\Container\ContainerInterface;
 
-class Reflection implements ServerReflectionInterface {
+class Reflection implements ServerReflectionInterface
+{
 
     protected ConfigInterface $config;
 
@@ -26,11 +27,12 @@ class Reflection implements ServerReflectionInterface {
     protected array $files = [];
     protected array $baseProtoFiles = [];
 
-    public function __construct(protected ContainerInterface $container) {
-        $this->config            = $this->container->get(ConfigInterface::class);
+    public function __construct(protected ContainerInterface $container)
+    {
+        $this->config = $this->container->get(ConfigInterface::class);
         $this->dispatcherFactory = $this->container->get(DispatcherFactory::class);
         //获取服务
-        $this->servers        = $this->servers();
+        $this->servers = $this->servers();
         $this->baseProtoFiles = $this->getProtoFilePathsByClass($this->config->get("grpc.reflection.base_class", []));
     }
 
@@ -38,7 +40,8 @@ class Reflection implements ServerReflectionInterface {
      * @param ServerReflectionRequest $request
      * @return ServerReflectionResponse
      */
-    public function serverReflectionInfo(ServerReflectionRequest $request): ServerReflectionResponse {
+    public function serverReflectionInfo(ServerReflectionRequest $request): ServerReflectionResponse
+    {
         $resp = new ServerReflectionResponse();
         if ($this->config->get("grpc.reflection.enable") !== true) {
             return $resp;
@@ -80,16 +83,18 @@ class Reflection implements ServerReflectionInterface {
         return $resp;
     }
 
-    private function toGoogleProtobufPath($fileName): string {
+    private function toGoogleProtobufPath($fileName): string
+    {
         $start = strpos($fileName, 'google/protobuf/') + 16;
-        $end   = strpos($fileName, '.');
+        $end = strpos($fileName, '.');
         $class = substr($fileName, $start, $end - $start);
         if ($class == "empty") $class = "GPBEmpty";
         return $this->getProtoFilePathsByClass(["GPBMetadata\\Google\\Protobuf\\" . Str::studly($class)])[0] ?? '';
     }
 
-    private function servers(): array {
-        $routes   = $this->dispatcherFactory
+    private function servers(): array
+    {
+        $routes = $this->dispatcherFactory
             ->getRouter($this->config->get("grpc.register.server_name", "grpc"))
             ->getData();
         $services = [];
@@ -114,28 +119,35 @@ class Reflection implements ServerReflectionInterface {
         return $services;
     }
 
-    private function getProtoFilePathsByServer(string $serverName): array {
-        $pattern        = $this->config->get("grpc.reflection.route_to_proto_pattern", "");
-        $serverName     = empty($pattern) ? $serverName : Str::match($pattern, $serverName);
+    private function getProtoFilePathsByServer(string $serverName): array
+    {
+        $pattern = $this->config->get("grpc.reflection.route_to_proto_pattern", "");
+        $serverName = empty($pattern) ? $serverName : Str::match($pattern, $serverName);
         $protoFilePaths = [];
-        $basePath       = $this->config->get("grpc.reflection.path", "app/Grpc/GPBMetadata");
-        foreach (explode(".", $serverName) as $item) {
-            $file = sprintf("%s/%s.php", $basePath, Str::studly($item));
-            if (!in_array($file, $protoFilePaths) && file_exists($file)) {
-                $protoFilePaths[] = $file;
+        $nameAnalyze = explode(".", $serverName);
+        $length = count($nameAnalyze);
+        $nameAnalyze[$length - 1] = Str::studly(Str::lower($nameAnalyze[$length - 1]));
+        $namespacePath = $this->config->get("kyy_tools.reflection.path", "app/Grpc/GPBMetadata");
+        for ($i = 0; $i < $length; $i++) {
+            $file = $namespacePath . "/" . implode("/", $nameAnalyze) . ".php";
+            if (file_exists($file)) {
+                !in_array($file, $protoFilePaths) && $protoFilePaths[] = $file;
+                break;
             }
+            unset($nameAnalyze[$i]);
         }
         return $protoFilePaths;
     }
 
-    private function getProtoFileContent(string $filePath) {
+    private function getProtoFileContent(string $filePath)
+    {
         if (!isset($this->files[$filePath])) {
             // 读取
             $file = file_get_contents($filePath);
             // 获取proto生成的内容 todo 带点玄学，需要优化
             $start = strpos($file, "'", 121) + 1;
             // 暂时只支持proto3
-            $end  = strpos($file, "proto3'", $start) + 6;
+            $end = strpos($file, "proto3'", $start) + 6;
             $file = substr($file, $start, $end - $start);
             $file = str_replace('\\\\', "\\", $file);
             $file = str_replace(substr($file, 1, 3), "", $file);
@@ -146,7 +158,8 @@ class Reflection implements ServerReflectionInterface {
         return $this->files[$filePath];
     }
 
-    private function getProtoFilePathsByClass(array $protoClass): array {
+    private function getProtoFilePathsByClass(array $protoClass): array
+    {
         $files = [];
         foreach ($protoClass as $class) {
             try {
