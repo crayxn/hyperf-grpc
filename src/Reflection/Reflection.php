@@ -73,7 +73,7 @@ class Reflection implements ServerReflectionInterface
                 $fileName = $request->getFileByFilename();
                 if (str_contains($fileName, 'google/protobuf/')) {
                     $paths = $this->toGoogleProtobufPath($fileName);
-                    $resp->setFileDescriptorResponse(
+                    !empty($paths) && $resp->setFileDescriptorResponse(
                         (new FileDescriptorResponse())->setFileDescriptorProto([$this->getProtoFileContent($paths)])
                     );
                     break;
@@ -124,6 +124,7 @@ class Reflection implements ServerReflectionInterface
         $pattern = $this->config->get("grpc.reflection.route_to_proto_pattern", "");
         $serverName = empty($pattern) ? $serverName : Str::match($pattern, $serverName);
         $protoFilePaths = [];
+        if(empty($serverName)) return $protoFilePaths;
         $nameAnalyze = explode(".", $serverName);
         $length = count($nameAnalyze);
         $nameAnalyze[$length - 1] = Str::studly(Str::lower($nameAnalyze[$length - 1]));
