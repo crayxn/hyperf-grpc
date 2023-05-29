@@ -6,19 +6,45 @@ Hyperf Grpc 服务插件，协助完成grpc服务注册、服务链路追踪、�
 
 *请先阅读hyperf文档grpc服务一节 https://hyperf.wiki/3.0/#/zh-cn/grpc*
 
-引入
+## Update
+### [1.x] 
+- 重构服务反射，提升速度
+- TracerDriver 默认配置调整为Noop类型
+- 服务注册优化异常时跳过
+
+## 快速开始
+
+### 引入
 
 ```
 composer require crayoon/hyperf-grpc
 ```
 
-生成配置文件
+### 生成配置文件
 
 ```
 php bin/hyperf.php vendor:publish crayoon/hyperf-grpc
 ```
 
-使用
+### 配置
+修改 config/autoload/annotations.php
+```php
+return [
+    'scan' => [
+        'paths' => [
+            BASE_PATH . '/app',
+        ],
+        'ignore_annotations' => [
+            'mixin',
+        ],
+        'class_map' => [
+            \Google\Protobuf\Internal\DescriptorPool::class => BASE_PATH.'/vendor/crayoon/hyperf-grpc/class_map/Protobuf/DescriptorPool.php'
+        ]
+    ]
+];
+```
+
+### 使用
 
 ```php
 // config/routes.php

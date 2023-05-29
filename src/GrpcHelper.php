@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 /**
- * @author   crayoon
- * @contact  so.wo@foxmail.com
+ * @author   crayxn <https://github.com/crayxn>
+ * @contact  crayxn@qq.com
  */
 
 namespace Crayoon\HyperfGrpc;

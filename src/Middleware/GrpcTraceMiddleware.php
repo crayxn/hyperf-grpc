@@ -54,7 +54,7 @@ class GrpcTraceMiddleware implements MiddlewareInterface {
         }
 
         $path = $request->getUri()->getPath();
-        $key  = "GRPC Request [RPC] {$path}";
+        $key  = "[GRPC] {$path}";
         $span = $this->startSpan($key, $option);
         $span->setTag('rpc.path', $path);
         foreach ($request->getHeaders() as $key => $value) {
