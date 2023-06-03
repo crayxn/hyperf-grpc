@@ -11,6 +11,8 @@ Hyperf Grpc 服务插件，协助完成grpc服务注册、服务链路追踪、�
 - 重构服务反射，提升速度
 - TracerDriver 默认配置调整为Noop类型
 - 服务注册优化异常时跳过
+- 增加支持 Grpc Streaming
+- 增积支持 GrpcHealth Watch Streaming模式
 
 ## 快速开始
 
