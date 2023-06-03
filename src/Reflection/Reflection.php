@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Crayoon\HyperfGrpc\Reflection;
 
+use Crayoon\HyperfGrpc\Health\GPBMetadata\Health;
 use Google\Protobuf\Internal\DescriptorPool;
 use Hyperf\Contract\ConfigInterface;
 use Hyperf\Di\ReflectionManager;
@@ -39,6 +40,10 @@ class Reflection implements ServerReflectionInterface
 
         $paths = $this->config->get("grpc.reflection.path");
         $class = ReflectionManager::getAllClasses(is_array($paths) ? $paths : [$paths]);
+
+        // Health
+        Health::initOnce();
+        // Other
         foreach ($class as $item => $reflection) {
             call_user_func("{$item}::initOnce");
         }

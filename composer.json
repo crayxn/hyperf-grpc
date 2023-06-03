@@ -20,6 +20,7 @@
     },
     "require": {
         "php": ">=8.0",
+        "amphp/hpack": "^3.1",
         "hyperf/di": "3.0.*",
         "hyperf/grpc-server": "^3.0",
         "hyperf/http-server": "^3.0",
