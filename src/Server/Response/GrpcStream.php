@@ -67,38 +67,53 @@ class GrpcStream
     }
 
     /**
-     * 写入消息
      * @param mixed $data
      * @return bool
      */
     public function write(mixed $data): bool
     {
-        if (!$this->withHeader && !$this->withHeader()) {
-            return false;
-        }
-
         if (!$this->response->isWritable()) {
             return false;
         }
 
-        $res = $this->server->send($this->response->fd, $this->frame(
+        $stream = '';
+        // add header
+        if (!$this->withHeader) {
+            $stream .= $this->buildHeader();
+            $this->withHeader = true;
+        }
+        // add message
+        $stream .= $this->frame(
             $data ? Parser::serializeMessage($data) : '',
             self::SW_HTTP2_FRAME_TYPE_DATA,
             self::SW_HTTP2_FLAG_NONE,
             $this->request->streamId
-        ));
+        );
 
-        return $res;
+        return $this->server->send($this->response->fd, $stream);
     }
 
+    /**
+     * @param int $status
+     * @param string $message
+     * @return bool
+     */
     public function close(int $status = StatusCode::OK, string $message = ''): bool
     {
-        $res = $this->withHeader(true, [
+        if (!$this->response->isWritable()) {
+            return true;
+        }
+
+        $header = $this->buildHeader(true, [
+            [':status', '200'],
+            ['content-type', 'application/grpc+proto'],
+            ['trailer', 'grpc-status, grpc-message'],
             ['grpc-status', (string)$status],
             ['grpc-message', $message],
         ]);
 
-        $this->response->detach();
+        $res = $this->server->send($this->response->fd, $header);
+        if ($res) $this->response->detach();
 
         return $res;
     }
@@ -112,29 +127,24 @@ class GrpcStream
     /**
      * @param bool $end
      * @param array $headers
-     * @return bool
+     * @return string
      */
-    public function withHeader(bool $end = false, array $headers = [
+    private function buildHeader(bool $end = false, array $headers = [
         [':status', '200'],
-        ['server', 'Hyperf'],
-        ['content-type', 'application/grpc'],
-        ['trailer', 'grpc-status, grpc-message'],
-        ['grpc-status', '0'],
-        ['grpc-message', ''],
-    ]): bool
+        ['content-type', 'application/grpc+proto']
+    ]): string
     {
         try {
             $compressedHeaders = (new HPack())->encode($headers);
         } catch (HPackException) {
-            return false;
+            return '';
         }
-        $res = $this->server->send($this->response->fd, $this->frame(
+
+        return $this->frame(
             $compressedHeaders,
             self::SW_HTTP2_FRAME_TYPE_HEAD,
             $end ? (self::SW_HTTP2_FLAG_END_STREAM | self::SW_HTTP2_FLAG_END_HEADERS) : self::SW_HTTP2_FLAG_END_HEADERS,
             $this->request->streamId
-        ));
-        $this->withHeader = $res;
-        return $res;
+        );
     }
 }
