@@ -18,6 +18,9 @@ use Hyperf\Grpc\StatusCode;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\Http\Server;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Hyperf\Engine\Http\WritableConnection;
 
 class GrpcStream
 {
@@ -58,9 +61,15 @@ class GrpcStream
         try {
             $this->server = $container->get(\Swoole\Server::class);
             // Get swoole request and response
-            $this->request = $request ?? Context::get(Request::class);
-            $this->response = $response ?? Context::get(Response::class);
-
+            $this->request = Context::get(ServerRequestInterface::class)->getSwooleRequest();
+            /**
+             * @var WritableConnection $connect
+             */
+            $connect = Context::get(ResponseInterface::class)->getConnection();
+            if( !$connect ) {
+                throw new \Exception('undefined response');
+            }
+            $this->response = $connect->getSocket();
         } catch (\Throwable $e) {
             throw new GrpcStreamException($e->getMessage());
         }

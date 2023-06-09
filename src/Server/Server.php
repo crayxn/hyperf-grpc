@@ -26,10 +26,6 @@ class Server extends \Hyperf\GrpcServer\Server
 {
     public function onRequest($request, $response): void
     {
-        //Add Swoole Request and Response
-        Context::set(Request::class, $request);
-        Context::set(Response::class, $response);
-
         try {
             CoordinatorManager::until(Constants::WORKER_START)->yield();
 
