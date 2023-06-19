@@ -10,6 +10,8 @@ namespace Crayoon\HyperfGrpc\Server\Response;
 use Amp\Http\HPack;
 use Amp\Http\HPackException;
 use Crayoon\HyperfGrpc\Exception\GrpcStreamException;
+use Crayoon\HyperfGrpc\Server\Http2Frame\FrameParser;
+use Crayoon\HyperfGrpc\Server\Http2Frame\Http2Frame;
 use Hyperf\Context\ApplicationContext;
 use Hyperf\Context\Context;
 use Hyperf\Contract\ContainerInterface;
@@ -38,16 +40,13 @@ class GrpcStream
      */
     protected Response $response;
 
+    /**
+     * @var FrameParser
+     */
+    protected FrameParser $frameParser;
+
     protected bool $withHeader = false;
 
-    const SW_HTTP2_FRAME_TYPE_HEAD = 0x1;
-    const SW_HTTP2_FRAME_TYPE_DATA = 0x00;
-    const SW_HTTP2_FLAG_NONE = 0x00;
-    const SW_HTTP2_FLAG_ACK = 0x01;
-    const SW_HTTP2_FLAG_END_STREAM = 0x01;
-    const SW_HTTP2_FLAG_END_HEADERS = 0x04;
-    const SW_HTTP2_FLAG_PADDED = 0x08;
-    const SW_HTTP2_FLAG_PRIORITY = 0x20;
 
     /**
      * @throws GrpcStreamException
@@ -59,20 +58,40 @@ class GrpcStream
          */
         $container = ApplicationContext::getContainer();
         try {
+            // Get Server
             $this->server = $container->get(\Swoole\Server::class);
+
             // Get swoole request and response
             $this->request = Context::get(ServerRequestInterface::class)->getSwooleRequest();
             /**
              * @var WritableConnection $connect
              */
             $connect = Context::get(ResponseInterface::class)->getConnection();
-            if( !$connect ) {
+            if (!$connect) {
                 throw new \Exception('undefined response');
             }
             $this->response = $connect->getSocket();
+
+            // Get Parser
+            $this->frameParser = $container->get(FrameParser::class);
+
         } catch (\Throwable $e) {
             throw new GrpcStreamException($e->getMessage());
         }
+    }
+
+    /**
+     * @param null|Http2Frame|Http2Frame[] $frames
+     * @return bool
+     */
+    public function emit(null|Http2Frame|array $frames): bool
+    {
+        if (!$frames) return false;
+        $mixedStream = implode('', array_map(function ($item) {
+            return $this->frameParser->pack($item);
+        }, is_array($frames) ? $frames : [$frames]));
+
+        return $this->server->send($this->response->fd, $mixedStream);
     }
 
     /**
@@ -85,21 +104,21 @@ class GrpcStream
             return false;
         }
 
-        $stream = '';
+        $streams = [];
         // add header
         if (!$this->withHeader) {
-            $stream .= $this->buildHeader();
+            $streams[] = $this->buildHeader();
             $this->withHeader = true;
         }
         // add message
-        $stream .= $this->frame(
+        $streams[] = new Http2Frame(
             $data ? Parser::serializeMessage($data) : '',
-            self::SW_HTTP2_FRAME_TYPE_DATA,
-            self::SW_HTTP2_FLAG_NONE,
+            Http2Frame::HTTP2_FRAME_TYPE_DATA,
+            Http2Frame::HTTP2_FLAG_NONE,
             $this->request->streamId
         );
 
-        return $this->server->send($this->response->fd, $stream);
+        return $this->emit($streams);
     }
 
     /**
@@ -113,7 +132,7 @@ class GrpcStream
             return true;
         }
 
-        $header = $this->buildHeader(true, [
+        $headerStream = $this->buildHeader(true, [
             [':status', '200'],
             ['content-type', 'application/grpc+proto'],
             ['trailer', 'grpc-status, grpc-message'],
@@ -121,39 +140,32 @@ class GrpcStream
             ['grpc-message', $message],
         ]);
 
-        $res = $this->server->send($this->response->fd, $header);
+        $res = $this->emit($headerStream);
         if ($res) $this->response->detach();
 
         return $res;
     }
 
 
-    private function frame(string $data, int $type, int $flags, int $stream = 0): string
-    {
-        return (substr(pack("NccN", strlen($data), $type, $flags, $stream), 1) . $data);
-    }
-
     /**
      * @param bool $end
      * @param array $headers
-     * @return string
+     * @return Http2Frame
      */
     private function buildHeader(bool $end = false, array $headers = [
         [':status', '200'],
         ['content-type', 'application/grpc+proto']
-    ]): string
+    ]): Http2Frame
     {
-        try {
-            $compressedHeaders = (new HPack())->encode($headers);
-        } catch (HPackException) {
-            return '';
+        $frame = $this->frameParser->encodeHeaderFrame($headers, $this->request->streamId);
+        if ($frame && $end) {
+            $frame->flags = Http2Frame::HTTP2_FLAG_END_STREAM | Http2Frame::HTTP2_FLAG_END_HEADERS;
         }
+        return $frame;
+    }
 
-        return $this->frame(
-            $compressedHeaders,
-            self::SW_HTTP2_FRAME_TYPE_HEAD,
-            $end ? (self::SW_HTTP2_FLAG_END_STREAM | self::SW_HTTP2_FLAG_END_HEADERS) : self::SW_HTTP2_FLAG_END_HEADERS,
-            $this->request->streamId
-        );
+    public function isWritable()
+    {
+        return $this->response->isWritable();
     }
 }

@@ -10,11 +10,14 @@ namespace Crayoon\HyperfGrpc;
 
 use Crayoon\HyperfGrpc\Listener\RegisterConsul4GrpcDriverListener;
 use Crayoon\HyperfGrpc\Listener\RegisterGrpcServiceListener;
+use Crayoon\HyperfGrpc\Server\Http2Frame\FrameParser;
+use Crayoon\HyperfGrpc\Server\Http2Frame\FrameParserInterface;
 
 class ConfigProvider {
     public function __invoke(): array {
         return [
             'dependencies' => [
+                FrameParserInterface::class => FrameParser::class
             ],
             'commands'     => [
             ],
