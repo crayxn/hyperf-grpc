@@ -53,9 +53,12 @@ class StreamServer extends Server
                 // push data
                 $dataChannel->channel($fd)->push($frame->payload);
             }
+
+            //todo 判断客户端断开
+
             // end stream
             if ($frame->flags == Http2Frame::HTTP2_FLAG_END_STREAM) {
-                $dataChannel->get($fd)->push(Http2Frame::EOF);
+                $dataChannel->channel($fd)->push(Http2Frame::EOF);
             }
         }
         if (!$handler) return;

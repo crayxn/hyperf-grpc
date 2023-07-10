@@ -131,9 +131,9 @@ class StreamHandler
                     ['trailer', 'grpc-status, grpc-message']
                 ], $this->streamId)
             );
-        } else {
             $this->polluted = true;
         }
+
         $frames[] = $this->frameParser->pack($frame);
         // write
         return $this->swooleServer->send($this->fd, implode('', $frames));
