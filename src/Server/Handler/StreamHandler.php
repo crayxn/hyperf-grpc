@@ -112,7 +112,7 @@ class StreamHandler
     public function receive(string|array $deserialize = null): mixed
     {
         $data = $this->dataChannel->pop();
-        if ($deserialize) {
+        if ($deserialize && $data != Http2Frame::EOF) {
             $data = Parser::deserializeMessage(is_array($deserialize) ? $deserialize : [$deserialize, 'mergeFromString'], $data);
         }
         return $data;

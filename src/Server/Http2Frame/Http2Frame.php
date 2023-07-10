@@ -20,7 +20,7 @@ class Http2Frame
     const HTTP2_FLAG_END_HEADERS = 0x04;
     const HTTP2_FLAG_PADDED = 0x08;
     const HTTP2_FLAG_PRIORITY = 0x20;
-    
+
     const SETTING_HEX = '00030000008000040000ffff000500004000';
     const EOF = '\r\n';
 
