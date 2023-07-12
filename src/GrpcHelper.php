@@ -27,35 +27,20 @@ class GrpcHelper
      * @param array $options
      * @return void
      */
-    public static function RegisterRoutes(callable $callback, string $serverName = "grpc", array $options = []): void
+    public static function RegisterRoutes(callable $callback, string $serverName = "grpc", array $options = [], bool $streamMode = false): void
     {
-
-        $streamMode = false;
-        if (Context::has(StreamHandler::class)) {
-            $streamMode = true;
-        }
-
         Router::addServer($serverName, function () use ($callback, $options, $streamMode) {
             //reflection
             Router::addGroup('/grpc.reflection.v1alpha.ServerReflection', function () use ($streamMode) {
-                if ($streamMode) {
-                    Router::post('/ServerReflectionInfo', [StreamReflection::class, 'serverReflectionInfoStream']);
-                } else {
-                    Router::post('/ServerReflectionInfo', [Reflection::class, 'serverReflectionInfo']);
-                }
+                Router::post('/ServerReflectionInfo', $streamMode ? [StreamReflection::class, 'streamServerReflectionInfo'] : [Reflection::class, 'serverReflectionInfo']);
             }, [
                 "register" => false
             ]);
 
             //health
             Router::addGroup('/grpc.health.v1.Health', function () use ($streamMode) {
-                if ($streamMode) {
-                    Router::post('/Check', [StreamHealth::class, 'check']);
-                    Router::post('/Watch', [StreamHealth::class, 'watch']);
-                } else {
-                    Router::post('/Check', [Health::class, 'check']);
-                    Router::post('/Watch', [Health::class, 'watch']);
-                }
+                Router::post('/Check', $streamMode ? [StreamHealth::class, 'streamCheck'] : [Health::class, 'check']);
+                Router::post('/Watch', $streamMode ? [StreamHealth::class, 'streamWatch'] : [Health::class, 'watch']);
             }, [
                 "register" => false
             ]);

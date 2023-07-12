@@ -10,6 +10,7 @@ namespace Crayoon\HyperfGrpc\Server\Handler;
 use Crayoon\HyperfGrpc\Server\Channel\ChannelManager;
 use Crayoon\HyperfGrpc\Server\Http2Frame\FrameParser;
 use Crayoon\HyperfGrpc\Server\Http2Frame\Http2Frame;
+use Crayoon\HyperfGrpc\Server\Http2Stream\StreamManager;
 use Exception;
 use Google\Protobuf\Internal\Message;
 use Hyperf\Context\ApplicationContext;
@@ -42,9 +43,9 @@ class StreamHandler
     private ServerRequestInterface $request;
 
     /**
-     * @var Channel
+     * @var StreamManager
      */
-    private Channel $dataChannel;
+    private StreamManager $streamManager;
 
     /**
      * @var int
@@ -86,17 +87,18 @@ class StreamHandler
         $this->fd = $fd;
         $this->streamId = $swooleHeaderFrame->streamId;
         $this->container = ApplicationContext::getContainer();
-        $this->dataChannel = $this->container->get(ChannelManager::class)->create($fd);
+        $this->streamManager = $this->container->get(StreamManager::class);
         $this->frameParser = $this->container->get(FrameParser::class);
+        $stream = $this->streamManager->get($this->streamId);
         // push data
-        if ($body) $this->dataChannel->push($body);
+        if ($body) $stream->receiveChannel->push($body);
         // emit setting
         $this->swooleServer->send($fd, $this->frameParser->pack(
             new Http2Frame(hex2bin(Http2Frame::SETTING_HEX), Http2Frame::HTTP2_FRAME_TYPE_SETTING, Http2Frame::HTTP2_FLAG_NONE, 0)
         ));
         // headers
         $swooleHeaders = [];
-        foreach ($this->frameParser->decodeHeaderFrame($swooleHeaderFrame) as [$key, $value]) {
+        foreach ($this->frameParser->decodeHeaderFrame($swooleHeaderFrame) ?? [] as [$key, $value]) {
             $swooleHeaders[$key] = $value;
         }
         //create request
@@ -111,7 +113,7 @@ class StreamHandler
 
     public function receive(string|array $deserialize = null): mixed
     {
-        $data = $this->dataChannel->pop();
+        $data = $this->streamManager->get($this->streamId)->receiveChannel->pop();
         if ($deserialize && $data != Http2Frame::EOF) {
             $data = Parser::deserializeMessage(is_array($deserialize) ? $deserialize : [$deserialize, 'mergeFromString'], $data);
         }
@@ -121,6 +123,10 @@ class StreamHandler
 
     private function write(Http2Frame $frame): bool
     {
+        // check stream status
+        if(!$this->streamManager->checkActive($this->streamId)){
+            return false;
+        }
         $frames = [];
         if (!$this->polluted && $frame->type == Http2Frame::HTTP2_FRAME_TYPE_DATA) {
             //with header

@@ -18,7 +18,7 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class StreamReflection extends Reflection
 {
-    public function serverReflectionInfoStream(): void
+    public function streamServerReflectionInfo(): void
     {
         /**
          * @var StreamHandler $handler

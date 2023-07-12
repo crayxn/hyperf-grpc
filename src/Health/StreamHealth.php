@@ -12,7 +12,7 @@ use Hyperf\Context\Context;
 
 class StreamHealth extends Health
 {
-    public function checkStream(): void
+    public function streamCheck(): void
     {
         /**
          * @var StreamHandler $handler
@@ -23,7 +23,7 @@ class StreamHealth extends Health
         $handler->push($response);
     }
 
-    public function watchStream(): void
+    public function streamWatch(): void
     {
         /**
          * @var StreamHandler $handler
