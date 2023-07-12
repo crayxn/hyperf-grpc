@@ -2,11 +2,14 @@
 
 Hyperf Grpc 服务插件，协助完成grpc服务注册、服务链路追踪、服务健康、服务反射等
 
-使用教程 https://learnku.com/articles/75681 如果有帮助到您的话，还请给个Star哦
+使用教程 https://learnku.com/articles/75681 如果有帮助到您的话，还请给个星哦
 
 *请先阅读hyperf文档grpc服务一节 https://hyperf.wiki/3.0/#/zh-cn/grpc*
 
 ## Update
+### [2.x]
+- 服务处理重写，支持GRPC全模式（一元模式、客户端流模式、服务端流模式、双向流模式）
+
 ### [1.x] 
 - 重构服务反射，提升速度
 - TracerDriver 默认配置调整为Noop类型
@@ -19,7 +22,7 @@ Hyperf Grpc 服务插件，协助完成grpc服务注册、服务链路追踪、�
 ### 引入
 
 ```
-composer require crayoon/hyperf-grpc
+composer require crayoon/hyperf-grpc dev-2.0-alpha
 ```
 
 ### 生成配置文件
@@ -45,8 +48,24 @@ return [
     ]
 ];
 ```
+修改 config/autoload/server.php
+```php
+    'servers' => [
+        [
+            'name' => 'grpc',
+            'type' => Server::SERVER_BASE,
+            'host' => '0.0.0.0',
+            'port' => 9501,
+            'sock_type' => SWOOLE_SOCK_TCP,
+            'callbacks' => [
+                Event::ON_RECEIVE => [\Crayoon\HyperfGrpc\Server\StreamServer::class, 'onReceive']
+            ],
+        ],
+        ...
+    ],
+```
 
-### 使用
+### 流模式使用
 
 ```php
 // config/routes.php
@@ -58,5 +77,7 @@ GrpcHelper::RegisterRoutes(function () {
         ...
     });
     ...
-});
+}, 'grpc', [], true);
 ```
+
+可以参考 https://github.com/crayxn/grpc-stream-demo
