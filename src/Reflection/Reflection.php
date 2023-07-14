@@ -39,13 +39,15 @@ class Reflection implements ServerReflectionInterface
         $this->baseProtoFiles = $this->config->get('grpc.reflection.base_files', []);
 
         $paths = $this->config->get("grpc.reflection.path");
-        $class = ReflectionManager::getAllClasses(is_array($paths) ? $paths : [$paths]);
-
         // Health
         Health::initOnce();
-        // Other
-        foreach ($class as $item => $reflection) {
-            call_user_func("{$item}::initOnce");
+        try {
+            // Other
+            $class = ReflectionManager::getAllClasses(is_array($paths) ? $paths : [$paths]);
+            foreach ($class as $item => $reflection) {
+                call_user_func("{$item}::initOnce");
+            }
+        }catch (\Throwable $throwable){
         }
 
         //获取服务

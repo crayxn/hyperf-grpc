@@ -9,11 +9,16 @@ declare(strict_types=1);
 namespace Crayoon\HyperfGrpc;
 
 use Crayoon\HyperfGrpc\Health\Health;
+use Crayoon\HyperfGrpc\Health\StreamHealth;
 use Crayoon\HyperfGrpc\Middleware\GrpcTraceMiddleware;
 use Crayoon\HyperfGrpc\Reflection\Reflection;
+use Crayoon\HyperfGrpc\Reflection\StreamReflection;
+use Crayoon\HyperfGrpc\Server\Handler\StreamHandler;
+use Hyperf\Context\Context;
 use Hyperf\HttpServer\Router\Router;
 
-class GrpcHelper {
+class GrpcHelper
+{
 
     /**
      * register routers
@@ -22,19 +27,20 @@ class GrpcHelper {
      * @param array $options
      * @return void
      */
-    public static function RegisterRoutes(callable $callback, string $serverName = "grpc", array $options = []): void {
-        Router::addServer($serverName, function () use ($callback, $options) {
+    public static function RegisterRoutes(callable $callback, string $serverName = "grpc", array $options = [], bool $streamMode = false): void
+    {
+        Router::addServer($serverName, function () use ($callback, $options, $streamMode) {
             //reflection
-            Router::addGroup('/grpc.reflection.v1alpha.ServerReflection', function () {
-                Router::post('/ServerReflectionInfo', [Reflection::class, 'serverReflectionInfo']);
+            Router::addGroup('/grpc.reflection.v1alpha.ServerReflection', function () use ($streamMode) {
+                Router::post('/ServerReflectionInfo', $streamMode ? [StreamReflection::class, 'streamServerReflectionInfo'] : [Reflection::class, 'serverReflectionInfo']);
             }, [
                 "register" => false
             ]);
 
             //health
-            Router::addGroup('/grpc.health.v1.Health', function () {
-                Router::post('/Check', [Health::class, 'check']);
-                Router::post('/Watch', [Health::class, 'watch']);
+            Router::addGroup('/grpc.health.v1.Health', function () use ($streamMode) {
+                Router::post('/Check', $streamMode ? [StreamHealth::class, 'streamCheck'] : [Health::class, 'check']);
+                Router::post('/Watch', $streamMode ? [StreamHealth::class, 'streamWatch'] : [Health::class, 'watch']);
             }, [
                 "register" => false
             ]);
